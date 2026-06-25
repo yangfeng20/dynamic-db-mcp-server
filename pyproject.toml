@@ -29,8 +29,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/dynamic-db-mcp-server"
-Repository = "https://github.com/your-org/dynamic-db-mcp-server"
+Homepage = "https://github.com/yangfeng20/dynamic-db-mcp-server"
+Repository = "https://github.com/yangfeng20/dynamic-db-mcp-server"
 
 [project.scripts]
 dynamic-db-mcp-server = "dynamic_db_mcp_server.main:main"

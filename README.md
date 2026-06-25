@@ -1,58 +1,44 @@
 # dynamic-db-mcp-server
 
-Dynamic MySQL-compatible database MCP server. Register database connections at runtime, execute SQL with built-in destructive statement interception.
+动态注册的 MySQL 兼容数据库 MCP Server. 运行时注册数据库连接, 执行 SQL 时自带破坏性语句拦截.
 
-## Why this exists
+## 为什么造这个轮子
 
-Traditional database MCP servers require all connection configs to be written into environment variables or config files **beforehand**. This is impractical when:
+传统的数据库 MCP Server 要求把所有连接配置**事先**写进环境变量或配置文件. 这在以下场景不现实:
 
-- You have dozens/hundreds of database instances
-- Instance IPs change frequently
-- You don't want to maintain a static config file
-- You need AI to discover and connect to databases dynamically
+- 有几十/上百个数据库实例
+- 实例 IP 经常变动
+- 不想维护一份静态配置文件
+- 需要 AI 动态发现并连接数据库
 
-**dynamic-db-mcp-server** flips the model: connections are registered **at runtime** via a tool call. AI provides host/port/user/password, the server tests the connection, caches it, and returns an `instance_id` for subsequent queries.
+**dynamic-db-mcp-server** 翻转了模型: 连接在**运行时**通过工具调用注册. AI 提供 host/port/user/password, Server 测试连接, 缓存它, 返回 `instance_id` 供后续查询使用.
 
-## Features
+## 特性
 
-- **Dynamic registration** - No pre-configured connection lists. Register any MySQL-compatible database at runtime.
-- **Connection reuse** - Registered connections are cached. No repeated handshakes.
-- **SQL safety** - Read-only queries (SELECT/SHOW/WITH/EXPLAIN/DESC) execute directly. Destructive statements (DROP/DELETE/UPDATE/INSERT/ALTER/TRUNCATE) require explicit confirmation. Dangerous statements (OUTFILE/DUMPFILE/LOAD_FILE/SHUTDOWN) are blocked entirely.
-- **MySQL protocol compatible** - Works with MySQL, MariaDB, TDSQL, TDSQL-C, and any database speaking MySQL wire protocol.
-- **No sensitive data in config** - No hardcoded credentials. All connections are runtime-provided.
-- **Session-free** - Connections live in memory for the MCP process lifetime. Restart = clean slate.
+- **动态注册** — 无需预配置连接列表, 运行时注册任意 MySQL 兼容数据库
+- **连接复用** — 注册的连接会被缓存, 不重复握手
+- **SQL 安全** — 只读查询 (SELECT/SHOW/WITH/EXPLAIN/DESC) 直接执行; 破坏性语句 (DROP/DELETE/UPDATE/INSERT/ALTER/TRUNCATE) 需显式确认; 危险语句 (OUTFILE/DUMPFILE/LOAD_FILE/SHUTDOWN) 一律拒绝
+- **MySQL 协议兼容** — 适用于 MySQL, MariaDB, TDSQL, TDSQL-C 等任何使用 MySQL 线协议的数据库
+- **配置无敏感数据** — 无硬编码凭据, 所有连接均为运行时提供
+- **无状态** — 连接存在于 MCP 进程内存中, 重启即清空
 
-## Quick start
+## 快速开始
 
-### Install
+### 安装
 
 ```bash
-pip install -e .
+pip install dynamic-db-mcp-server
 ```
 
-Or use with `uv` / `uvx` (once published):
+或通过 `uv` / `uvx` 运行:
 
 ```bash
 uvx dynamic-db-mcp-server
 ```
 
-### Configure in your MCP client
+### 在 MCP 客户端中配置
 
-Add to your MCP client config (e.g., `opencode.jsonc`, `claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "dynamic-db": {
-      "command": "python",
-      "args": ["-m", "dynamic_db_mcp_server"],
-      "env": {}
-    }
-  }
-}
-```
-
-Or using `uvx`:
+在你的 MCP 客户端配置中添加 (如 `opencode.jsonc`, `claude_desktop_config.json`):
 
 ```json
 {
@@ -65,12 +51,25 @@ Or using `uvx`:
 }
 ```
 
-### Usage flow
+或从源码运行:
+
+```json
+{
+  "mcpServers": {
+    "dynamic-db": {
+      "command": "python",
+      "args": ["-m", "dynamic_db_mcp_server"]
+    }
+  }
+}
+```
+
+### 使用流程
 
 ```
 1. register_instance(name="my-db", host="10.0.0.5", port=3306, user="root", password="***")
    → {"instance_id": "my-db", "status": "connected"}
-   → Connection tested and cached
+   → 连接已测试并缓存
 
 2. list_instances()
    → [{"instance_id": "my-db", "host": "10.0.0.5", "port": 3306, "user": "root", "status": "connected"}]
@@ -85,45 +84,45 @@ Or using `uvx`:
    → {"affected_rows": 0}
 ```
 
-## Tools
+## 工具列表
 
-| Tool | Description |
+| 工具 | 说明 |
 |---|---|
-| `register_instance` | Register a database connection (tests with `SELECT 1`, caches it) |
-| `list_instances` | List all registered instances (password never returned) |
-| `execute_sql` | Execute SQL. Read-only passes through. Destructive requires `confirm_destructive=true` |
-| `list_databases` | Show databases on an instance |
-| `list_tables` | List tables in a database (with row count and size) |
-| `get_table_detail` | Get column info and `SHOW CREATE TABLE` DDL |
+| `register_instance` | 注册数据库连接 (用 `SELECT 1` 测试, 缓存) |
+| `list_instances` | 列出所有已注册实例 (不返回密码) |
+| `execute_sql` | 执行 SQL. 只读直接通过, 破坏性需 `confirm_destructive=true` |
+| `list_databases` | 列出实例上的所有数据库 |
+| `list_tables` | 列出指定库的表 (含行数和大小) |
+| `get_table_detail` | 查看表结构 (列信息 + `SHOW CREATE TABLE` DDL) |
 
-## SQL safety policy
+## SQL 安全策略
 
-| Category | Keywords | Behavior |
+| 类别 | 关键字 | 行为 |
 |---|---|---|
-| **Read-only** | SELECT, SHOW, WITH, EXPLAIN, DESC, DESCRIBE | Execute directly |
-| **Destructive** | DROP, TRUNCATE, DELETE, UPDATE, INSERT, ALTER, RENAME, GRANT, REVOKE, CREATE | Require `confirm_destructive=true` |
-| **Blocked** | OUTFILE, DUMPFILE, LOAD_FILE, SHUTDOWN, KILL | Always rejected |
+| **只读** | SELECT, SHOW, WITH, EXPLAIN, DESC, DESCRIBE | 直接执行 |
+| **破坏性** | DROP, TRUNCATE, DELETE, UPDATE, INSERT, ALTER, RENAME, GRANT, REVOKE, CREATE | 需 `confirm_destructive=true` |
+| **危险** | OUTFILE, DUMPFILE, LOAD_FILE, SHUTDOWN, KILL | 一律拒绝 |
 
-## Architecture
+## 架构
 
 ```
 AI Agent
    │
-   │  MCP Protocol (stdio)
+   │  MCP 协议 (stdio)
    ▼
 ┌──────────────────────────────────────┐
 │      dynamic-db-mcp-server           │
 │                                      │
-│  FastMCP Server ──→ 6 tools          │
+│  FastMCP Server ──→ 6 个工具         │
 │       │                              │
 │  ConnectionManager                   │
 │   - register / get / list            │
-│   - ping + auto_reconnect            │
+│   - ping + 自动重连                   │
 │   - per-instance threading.Lock      │
 │       │                              │
 │  SqlValidator                        │
-│   - keyword classification           │
-│   - read / destructive / blocked     │
+│   - 关键字分类                        │
+│   - 只读 / 破坏性 / 危险              │
 │       │                              │
 │  DbExecutor (pymysql)                │
 │   - execute / list / schema          │
@@ -131,7 +130,7 @@ AI Agent
                │
                │  TCP 3306
                ▼
-   MySQL / MariaDB / TDSQL / TDSQL-C
+    MySQL / MariaDB / TDSQL / TDSQL-C
 ```
 
 ## License
