@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dynamic-db-mcp-server"
+version = "0.1.0"
+description = "Dynamic MySQL-compatible database MCP server - register connections at runtime, execute SQL with destructive statement interception"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "dynamic-db-mcp-server contributors" },
+]
+keywords = ["mcp", "mysql", "database", "dynamic", "sql", "ai", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database",
+]
+dependencies = [
+    "mcp[cli]>=1.0.0",
+    "pymysql>=1.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/dynamic-db-mcp-server"
+Repository = "https://github.com/your-org/dynamic-db-mcp-server"
+
+[project.scripts]
+dynamic-db-mcp-server = "dynamic_db_mcp_server.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dynamic_db_mcp_server"]
