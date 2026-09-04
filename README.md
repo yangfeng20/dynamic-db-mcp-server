@@ -136,3 +136,7 @@ AI Agent
 ## License
 
 MIT
+
+## Link
+
+[linux.do](https://linux.do/)
